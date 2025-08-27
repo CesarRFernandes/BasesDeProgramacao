@@ -4,7 +4,7 @@ public class Agenda {
 
     public void escrita(String nome, String telefone){
         try {
-            FileWriter fw = new FileWriter("c:/Downloads/agenda.txt", true);
+            FileWriter fw = new FileWriter("/home/alun23204708360012/Downloads/agenda.txt", true);
             BufferedWriter bw = new BufferedWriter(fw);
             bw.write(nome+";"+telefone);
             bw.newLine();
@@ -16,7 +16,7 @@ public class Agenda {
     }
     public void lerTodos(){
         try {
-            FileReader fr = new FileReader("c:/Downloads/agenda.txt");
+            FileReader fr = new FileReader("/home/alun23204708360012/Downloads/agenda.txt");
             BufferedReader br = new BufferedReader(fr);
             while (br.ready()) {
                 String aux = br.readLine();
@@ -33,7 +33,7 @@ public class Agenda {
     }
     public void ler(String nome){
         try {
-            FileReader fr = new FileReader("c:/Downloads/agenda.txt");
+            FileReader fr = new FileReader("/home/alun23204708360012/Downloads/agenda.txt");
             BufferedReader br = new BufferedReader(fr);
             boolean encontrado = false;
             while (br.ready()) {
