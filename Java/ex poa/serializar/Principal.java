@@ -1,5 +1,3 @@
-package serializar;
-
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -11,7 +9,7 @@ public class Principal {
     public static void main(String[] args) {
         Professor p1 = new Professor("Miguel",42,"2345");
         try {
-        FileOutputStream arqSer = new FileOutputStream("c:/arquivo/miguel.ser");
+        FileOutputStream arqSer = new FileOutputStream("/home/alun23204708360012/Downloads/miguel.ser");
         ObjectOutputStream oSer = new ObjectOutputStream(arqSer);
         oSer.writeObject(p1);
         oSer.close();
@@ -21,9 +19,9 @@ public class Principal {
 
         System.out.println(p1);
         System.out.println(".......................");
-        FielInputStream arqDes = new FileInputStream("c:/arquivo/miguel.ser");
-        ObjectInputStream oDes = new ObjectInputStream("arqDes");
-        p1 = (Pessoa) oDes.readObject();
+        FileInputStream arqDes = new FileInputStream("/home/alun23204708360012/Downloads/miguel.ser");
+        ObjectInputStream oDes = new ObjectInputStream(arqDes);
+        p1 = (Professor) oDes.readObject();
         oDes.close();
         arqDes.close();
         System.out.println("........................");
