@@ -1,5 +1,3 @@
-package serializar;
-
 import java.io.Serializable;
 
 public class Professor implements Serializable {
