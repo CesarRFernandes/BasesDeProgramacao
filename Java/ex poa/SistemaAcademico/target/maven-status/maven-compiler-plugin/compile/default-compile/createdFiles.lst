@@ -1,0 +1,16 @@
+com\academico\controller\NotasServlet.class
+com\academico\dao\NotaDAO.class
+com\academico\controller\AtividadesServlet.class
+com\academico\service\CalculoCRSimples.class
+com\academico\model\Disciplina.class
+com\academico\service\CalculoCRPonderado.class
+com\academico\dao\AlunoDAO.class
+com\academico\model\Nota.class
+com\academico\dao\AtividadeDAO.class
+com\academico\controller\LoginServlet.class
+com\academico\model\AtividadeComplementar.class
+com\academico\dao\ConnectionFactory.class
+com\academico\model\Aluno.class
+com\academico\service\CalculadoraCR.class
+com\academico\util\APIViaCEP.class
+com\academico\service\EstrategiaCR.class
