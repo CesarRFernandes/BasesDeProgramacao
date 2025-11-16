@@ -1,0 +1,17 @@
+[
+  {
+    "municipio": "Uberlândia",
+    "solar_mwh": 220,
+    "eolica_mwh": 80
+  },
+  {
+    "municipio": "Montes Claros",
+    "solar_mwh": 130,
+    "eolica_mwh": 40
+  },
+  {
+    "municipio": "Poços de Caldas",
+    "solar_mwh": 90,
+    "eolica_mwh": 20
+  }
+]

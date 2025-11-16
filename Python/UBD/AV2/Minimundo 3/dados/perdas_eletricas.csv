@@ -1,0 +1,5 @@
+subestacao,mes,energia_entrada_mwh,energia_saida_mwh
+S1,Jan,4200,4050
+S1,Fev,4300,4120
+S2,Jan,3000,2820
+S2,Fev,3100,2880

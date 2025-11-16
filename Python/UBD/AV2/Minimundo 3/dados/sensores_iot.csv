@@ -1,0 +1,5 @@
+maquina,temperatura_c,vibracao_mm,hora
+M1,65,1.8,8
+M1,72,2.3,10
+M2,70,1.9,8
+M2,80,3.2,10
