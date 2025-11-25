@@ -3,6 +3,7 @@ from dao.tecnico_dao import TecnicoDAO
 from dao.servico_dao import ServicoDAO
 from dao.pagamento_dao import PagamentoDAO, PenalidadeDAO, CreditoDAO
 from dao.pacote_dao import ClientePacoteDAO
+from dao.transacao_dao import TransacaoDAO
 from models import Agendamento, Pagamento
 from typing import Optional, List
 from datetime import datetime
@@ -16,6 +17,7 @@ class AgendamentoController:
         self.penalidade_dao = PenalidadeDAO()
         self.credito_dao = CreditoDAO()
         self.cliente_pacote_dao = ClientePacoteDAO()
+        self.transacao_dao = TransacaoDAO()
     
     def criar_agendamento(self, agendamento: Agendamento) -> tuple[bool, str]:
         """Cria um novo agendamento com validações"""

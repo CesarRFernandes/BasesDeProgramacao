@@ -14,7 +14,7 @@ from config.database import DatabaseConfig
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Sistema de Agendamento - Reparos Automotivos")
+        self.setWindowTitle("4ADS - Sistema de Agendamento - Reparos Automotivos")
         self.setGeometry(100, 100, 1200, 800)
         
         if not self.verificar_conexao():
@@ -44,7 +44,7 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout()
         central_widget.setLayout(layout)
         
-        header = QLabel("Sistema de Agendamento de Reparos Eletrônicos Automotivos")
+        header = QLabel("4ADS - Sistema de Agendamento de Reparos Eletrônicos Automotivos")
         header.setFont(QFont("Arial", 16, QFont.Bold))
         header.setAlignment(Qt.AlignCenter)
         header.setStyleSheet("padding: 10px; background-color: #2c3e50; color: white;")
@@ -61,7 +61,11 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(PagamentoView(), "💰 Pagamentos")
         self.tabs.addTab(FilaEsperaView(), "⏳ Fila de Espera")
         
-        footer = QLabel("Sistema desenvolvido em Python + MySQL")
+        # Nova aba de Histórico de Transações
+        from views.transacao_view import TransacaoView
+        self.tabs.addTab(TransacaoView(), "📊 Histórico de Transações")
+        
+        footer = QLabel("Sistema desenvolvido por Caio Fusco e César Rosa")
         footer.setAlignment(Qt.AlignCenter)
         footer.setStyleSheet("padding: 5px; background-color: #ecf0f1;")
         layout.addWidget(footer)

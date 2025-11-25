@@ -139,3 +139,18 @@ class Credito:
         self.data_criacao = data_criacao or datetime.now()
         self.data_validade = data_validade
         self.ativo = ativo
+
+class Transacao:
+    def __init__(self, id=None, cliente_id=None, agendamento_id=None,
+                 pacote_id=None, tipo='', metodo_pagamento='', valor=0.0,
+                 data_hora=None, status='confirmado', descricao=''):
+        self.id = id
+        self.cliente_id = cliente_id
+        self.agendamento_id = agendamento_id
+        self.pacote_id = pacote_id
+        self.tipo = tipo
+        self.metodo_pagamento = metodo_pagamento
+        self.valor = valor
+        self.data_hora = data_hora or datetime.now()
+        self.status = status
+        self.descricao = descricao

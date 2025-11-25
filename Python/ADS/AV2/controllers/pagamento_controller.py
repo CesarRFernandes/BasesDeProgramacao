@@ -1,6 +1,7 @@
 from dao.pagamento_dao import PagamentoDAO, CreditoDAO
 from dao.agendamento_dao import AgendamentoDAO
 from dao.pacote_dao import ClientePacoteDAO
+from dao.transacao_dao import TransacaoDAO
 from models import Pagamento
 from typing import Optional, List
 from datetime import datetime
@@ -11,6 +12,7 @@ class PagamentoController:
         self.credito_dao = CreditoDAO()
         self.agendamento_dao = AgendamentoDAO()
         self.cliente_pacote_dao = ClientePacoteDAO()
+        self.transacao_dao = TransacaoDAO()
     
     def criar_pagamento_agendamento(self, agendamento_id: int, tipo_pagamento: str,
                                    usar_credito: bool = False) -> tuple[bool, str]:
@@ -61,6 +63,18 @@ class PagamentoController:
             if creditos_utilizados:
                 total_creditos = sum(c['valor'] for c in creditos_utilizados)
                 mensagem += f" | Créditos utilizados: R$ {total_creditos:.2f}"
+                
+                # Registrar uso de crédito nas transações
+                for credito in creditos_utilizados:
+                    self.transacao_dao.registrar_transacao(
+                        cliente_id=agendamento['cliente_id'],
+                        tipo='credito_utilizado',
+                        valor=credito['valor'],
+                        agendamento_id=agendamento_id,
+                        status='confirmado',
+                        descricao=f"Crédito utilizado no pagamento do agendamento {agendamento_id}"
+                    )
+            
             if valor_a_pagar > 0:
                 mensagem += f" | Valor a pagar: R$ {valor_a_pagar:.2f}"
             
@@ -104,6 +118,16 @@ class PagamentoController:
                     
                     if self.credito_dao.utilizar_credito(credito['id'], valor_usar):
                         valor_a_pagar -= valor_usar
+                        
+                        # Registrar uso de crédito
+                        self.transacao_dao.registrar_transacao(
+                            cliente_id=cliente_id,
+                            tipo='credito_utilizado',
+                            valor=valor_usar,
+                            pacote_id=pacote_id,
+                            status='confirmado',
+                            descricao=f"Crédito utilizado na contratação do pacote"
+                        )
             
             cliente_pacote_id = self.cliente_pacote_dao.contratar_pacote(cliente_id, pacote_id)
             
