@@ -170,6 +170,27 @@ CREATE TABLE penalidades (
     INDEX idx_utilizado (utilizado)
 ) ENGINE=InnoDB;
 
+-- Tabela de Transações para Histórico Completo
+CREATE TABLE IF NOT EXISTS transacoes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cliente_id INT NOT NULL,
+    agendamento_id INT NULL,
+    pacote_id INT NULL,
+    tipo VARCHAR(50) NOT NULL,
+    metodo_pagamento VARCHAR(20),
+    valor DECIMAL(10, 2) NOT NULL,
+    data_hora DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(20) NOT NULL DEFAULT 'confirmado',
+    descricao TEXT,
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id),
+    FOREIGN KEY (agendamento_id) REFERENCES agendamentos(id),
+    FOREIGN KEY (pacote_id) REFERENCES pacotes(id),
+    INDEX idx_cliente (cliente_id),
+    INDEX idx_tipo (tipo),
+    INDEX idx_data (data_hora),
+    INDEX idx_status (status)
+) ENGINE=InnoDB;
+
 -- Tabela de Créditos
 CREATE TABLE creditos (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -214,31 +235,27 @@ INSERT INTO pacotes_servicos (pacote_id, servico_id, quantidade) VALUES
 (2, 3, 1), (2, 8, 1),
 (3, 1, 1), (3, 2, 1), (3, 3, 1), (3, 6, 1);
 
--- Tabela de Transações para Histórico Completo
-CREATE TABLE IF NOT EXISTS transacoes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    cliente_id INT NOT NULL,
-    agendamento_id INT NULL,
-    pacote_id INT NULL,
-    tipo VARCHAR(50) NOT NULL,
-    metodo_pagamento VARCHAR(20),
-    valor DECIMAL(10, 2) NOT NULL,
-    data_hora DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    status VARCHAR(20) NOT NULL DEFAULT 'confirmado',
-    descricao TEXT,
-    FOREIGN KEY (cliente_id) REFERENCES clientes(id),
-    FOREIGN KEY (agendamento_id) REFERENCES agendamentos(id),
-    FOREIGN KEY (pacote_id) REFERENCES pacotes(id),
-    INDEX idx_cliente (cliente_id),
-    INDEX idx_tipo (tipo),
-    INDEX idx_data (data_hora),
-    INDEX idx_status (status)
-) ENGINE=InnoDB;
-
--- Tipos de transações possíveis:
--- 'pagamento_servico', 'pagamento_pacote', 'credito_recebido', 
--- 'credito_utilizado', 'taxa_nao_comparecimento', 'penalidade', 
--- 'estorno', 'reembolso'
+INSERT INTO transacoes (cliente_id, agendamento_id, tipo, metodo_pagamento, valor, data_hora, status, descricao)
+SELECT 
+    p.cliente_id,
+    p.agendamento_id,
+    CASE 
+        WHEN p.agendamento_id IS NOT NULL THEN 'pagamento_servico'
+        WHEN p.cliente_pacote_id IS NOT NULL THEN 'pagamento_pacote'
+        ELSE 'pagamento'
+    END as tipo,
+    p.tipo_pagamento,
+    p.valor,
+    COALESCE(p.data_pagamento, p.data_criacao) as data_hora,
+    p.status,
+    p.descricao
+FROM pagamentos p
+WHERE NOT EXISTS (
+    SELECT 1 FROM transacoes t 
+    WHERE t.cliente_id = p.cliente_id 
+    AND t.agendamento_id = p.agendamento_id
+    AND t.valor = p.valor
+);
 
 -- Trigger para registrar transação ao criar pagamento
 DELIMITER $$
@@ -248,7 +265,9 @@ AFTER INSERT ON pagamentos
 FOR EACH ROW
 BEGIN
     DECLARE tipo_transacao VARCHAR(50);
+    DECLARE status_transacao VARCHAR(20);
     
+    -- Determinar tipo de transação
     IF NEW.agendamento_id IS NOT NULL THEN
         SET tipo_transacao = 'pagamento_servico';
     ELSEIF NEW.cliente_pacote_id IS NOT NULL THEN
@@ -257,6 +276,14 @@ BEGIN
         SET tipo_transacao = 'pagamento';
     END IF;
     
+    -- Definir status da transação baseado no pagamento
+    IF NEW.status = 'pago' THEN
+        SET status_transacao = 'confirmado';
+    ELSE
+        SET status_transacao = 'pendente';
+    END IF;
+    
+    -- Inserir transação
     INSERT INTO transacoes (
         cliente_id, 
         agendamento_id, 
@@ -273,14 +300,47 @@ BEGIN
         NEW.tipo_pagamento,
         NEW.valor,
         NOW(),
-        NEW.status,
+        status_transacao,
         NEW.descricao
     );
 END$$
 
 DELIMITER ;
 
--- Trigger para registrar transação ao criar crédito
+-- Trigger para UPDATE de pagamentos
+DELIMITER $$
+
+CREATE TRIGGER after_pagamento_update
+AFTER UPDATE ON pagamentos
+FOR EACH ROW
+BEGIN
+    -- Se o status mudou para 'pago', atualizar transação correspondente
+    IF NEW.status = 'pago' AND OLD.status != 'pago' THEN
+        UPDATE transacoes 
+        SET status = 'confirmado',
+            data_hora = NOW()
+        WHERE cliente_id = NEW.cliente_id
+        AND ABS(valor - NEW.valor) < 0.01
+        AND status = 'pendente'
+        ORDER BY id DESC
+        LIMIT 1;
+    END IF;
+    
+    -- Se o status mudou para 'cancelado', atualizar transação
+    IF NEW.status = 'cancelado' AND OLD.status != 'cancelado' THEN
+        UPDATE transacoes 
+        SET status = 'cancelado'
+        WHERE cliente_id = NEW.cliente_id
+        AND ABS(valor - NEW.valor) < 0.01
+        AND status = 'pendente'
+        ORDER BY id DESC
+        LIMIT 1;
+    END IF;
+END$$
+
+DELIMITER ;
+
+-- Trigger para créditos
 DELIMITER $$
 
 CREATE TRIGGER after_credito_insert
@@ -306,7 +366,7 @@ END$$
 
 DELIMITER ;
 
--- Trigger para registrar transação ao aplicar penalidade
+-- Trigger para penalidades
 DELIMITER $$
 
 CREATE TRIGGER after_penalidade_insert
@@ -329,7 +389,7 @@ BEGIN
         NEW.valor_taxa,
         NOW(),
         'pendente',
-        CONCAT('Taxa de não comparecimento - 50%')
+        'Taxa de não comparecimento - 50%'
     );
     
     -- Registra o crédito gerado
@@ -348,31 +408,26 @@ BEGIN
         NEW.valor_credito,
         NOW(),
         'confirmado',
-        CONCAT('Crédito gerado - Não comparecimento')
+        'Crédito gerado - Não comparecimento'
     );
 END$$
 
 DELIMITER ;
 
--- Inserir transações históricas dos pagamentos existentes
-INSERT INTO transacoes (cliente_id, agendamento_id, tipo, metodo_pagamento, valor, data_hora, status, descricao)
-SELECT 
-    p.cliente_id,
-    p.agendamento_id,
-    CASE 
-        WHEN p.agendamento_id IS NOT NULL THEN 'pagamento_servico'
-        WHEN p.cliente_pacote_id IS NOT NULL THEN 'pagamento_pacote'
-        ELSE 'pagamento'
-    END as tipo,
-    p.tipo_pagamento,
-    p.valor,
-    COALESCE(p.data_pagamento, p.data_criacao) as data_hora,
-    p.status,
-    p.descricao
-FROM pagamentos p
-WHERE NOT EXISTS (
-    SELECT 1 FROM transacoes t 
-    WHERE t.cliente_id = p.cliente_id 
-    AND t.agendamento_id = p.agendamento_id
-    AND t.valor = p.valor
-);
+-- Sincronizar transações existentes com status dos pagamentos
+UPDATE transacoes t
+JOIN pagamentos p ON (
+    t.cliente_id = p.cliente_id 
+    AND ABS(t.valor - p.valor) < 0.01
+    AND t.tipo IN ('pagamento_servico', 'pagamento_pacote')
+)
+SET t.status = CASE 
+    WHEN p.status = 'pago' THEN 'confirmado'
+    WHEN p.status = 'cancelado' THEN 'cancelado'
+    ELSE 'pendente'
+END
+WHERE t.status != CASE 
+    WHEN p.status = 'pago' THEN 'confirmado'
+    WHEN p.status = 'cancelado' THEN 'cancelado'
+    ELSE 'pendente'
+END;
