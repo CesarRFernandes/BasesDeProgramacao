@@ -79,6 +79,10 @@ class PagamentoView(QWidget):
             if sucesso:
                 QMessageBox.information(self, "Sucesso", mensagem)
                 self.carregar_pendentes()
+                
+                # Notificar outras abas sobre a atualização
+                # Isso força a atualização da aba de transações se ela estiver aberta
+                self.parent().parent().repaint()
             else:
                 QMessageBox.warning(self, "Erro", mensagem)
     

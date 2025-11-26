@@ -1,13 +1,14 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QTableWidget, QTableWidgetItem, QLabel, QDialog,
                              QFormLayout, QMessageBox, QComboBox, QDateTimeEdit,
-                             QTextEdit, QGroupBox)
+                             QTextEdit, QGroupBox, QCheckBox)
 from PyQt5.QtCore import Qt, QDateTime
 from dao.agendamento_dao import AgendamentoDAO
 from dao.cliente_dao import ClienteDAO
 from dao.servico_dao import ServicoDAO
 from dao.pacote_dao import ClientePacoteDAO
 from controllers.agendamento_controller import AgendamentoController
+from controllers.pagamento_controller import PagamentoController
 from models import Agendamento
 from datetime import datetime, date
 
@@ -106,7 +107,7 @@ class AgendamentoView(QWidget):
                 QMessageBox.warning(self, "Erro", mensagem)
     
     def iniciar_atendimento(self):
-        """Inicia atendimento"""
+        """Inicia atendimento e abre diálogo de pagamento"""
         row = self.table.currentRow()
         if row < 0:
             QMessageBox.warning(self, "Aviso", "Selecione um agendamento")
@@ -116,8 +117,21 @@ class AgendamentoView(QWidget):
         sucesso, mensagem = self.agendamento_controller.iniciar_atendimento(agendamento_id)
         
         if sucesso:
-            QMessageBox.information(self, "Sucesso", mensagem)
-            self.carregar_proximos()
+            # Buscar detalhes do agendamento
+            agendamento = self.agendamento_controller.buscar_agendamento_detalhado(agendamento_id)
+            
+            if agendamento:
+                # Abrir diálogo de pagamento
+                dialog = PagamentoDialog(self, agendamento)
+                if dialog.exec_():
+                    QMessageBox.information(self, "Sucesso", "Atendimento iniciado e pagamento processado!")
+                    self.carregar_proximos()
+                else:
+                    QMessageBox.information(self, "Atenção", "Atendimento iniciado, mas pagamento não foi processado")
+                    self.carregar_proximos()
+            else:
+                QMessageBox.information(self, "Sucesso", mensagem)
+                self.carregar_proximos()
         else:
             QMessageBox.warning(self, "Erro", mensagem)
     
@@ -272,3 +286,111 @@ class AgendamentoDialog(QDialog):
             observacoes=self.observacoes_input.toPlainText(),
             cliente_pacote_id=self.pacote_combo.currentData()
         )
+
+class PagamentoDialog(QDialog):
+    """Diálogo para processar pagamento de agendamento"""
+    def __init__(self, parent=None, agendamento=None):
+        super().__init__(parent)
+        self.agendamento = agendamento
+        self.pagamento_controller = PagamentoController()
+        self.setWindowTitle("Processar Pagamento")
+        self.setModal(True)
+        self.resize(500, 400)
+        self.init_ui()
+    
+    def init_ui(self):
+        layout = QVBoxLayout()
+        
+        # Informações do agendamento
+        info_group = QGroupBox("Informações do Atendimento")
+        info_layout = QFormLayout()
+        
+        info_layout.addRow("Cliente:", QLabel(self.agendamento['cliente_nome']))
+        info_layout.addRow("Serviço:", QLabel(self.agendamento['servico_nome']))
+        
+        valor_label = QLabel(f"R$ {self.agendamento['servico_preco']:.2f}")
+        valor_label.setStyleSheet("font-size: 16px; font-weight: bold; color: green;")
+        info_layout.addRow("Valor:", valor_label)
+        
+        info_group.setLayout(info_layout)
+        layout.addWidget(info_group)
+        
+        # Opções de pagamento
+        pagamento_group = QGroupBox("Forma de Pagamento")
+        pagamento_layout = QFormLayout()
+        
+        self.tipo_pagamento_combo = QComboBox()
+        self.tipo_pagamento_combo.addItem("💵 Dinheiro", "dinheiro")
+        self.tipo_pagamento_combo.addItem("💳 Visa", "visa")
+        self.tipo_pagamento_combo.addItem("💳 Mastercard", "mastercard")
+        self.tipo_pagamento_combo.addItem("📱 Pix", "pix")
+        pagamento_layout.addRow("Método:", self.tipo_pagamento_combo)
+        
+        self.usar_credito_check = QCheckBox("Usar créditos disponíveis")
+        self.usar_credito_check.setChecked(True)
+        self.usar_credito_check.stateChanged.connect(self.atualizar_valor)
+        pagamento_layout.addRow("", self.usar_credito_check)
+        
+        # Verificar créditos disponíveis
+        saldo_creditos = self.pagamento_controller.buscar_saldo_creditos(
+            self.agendamento['cliente_id']
+        )
+        
+        self.creditos_label = QLabel(f"Créditos disponíveis: R$ {saldo_creditos:.2f}")
+        self.creditos_label.setStyleSheet("color: blue; font-weight: bold;")
+        pagamento_layout.addRow("", self.creditos_label)
+        
+        self.valor_pagar_label = QLabel(f"Valor a pagar: R$ {self.agendamento['servico_preco']:.2f}")
+        self.valor_pagar_label.setStyleSheet("font-size: 14px; font-weight: bold; color: red;")
+        pagamento_layout.addRow("", self.valor_pagar_label)
+        
+        pagamento_group.setLayout(pagamento_layout)
+        layout.addWidget(pagamento_group)
+        
+        # Botões
+        btn_layout = QHBoxLayout()
+        btn_processar = QPushButton("✅ Processar Pagamento")
+        btn_processar.clicked.connect(self.processar_pagamento)
+        btn_processar.setStyleSheet("background-color: #27ae60; color: white; padding: 10px;")
+        btn_cancelar = QPushButton("❌ Cancelar")
+        btn_cancelar.clicked.connect(self.reject)
+        
+        btn_layout.addWidget(btn_processar)
+        btn_layout.addWidget(btn_cancelar)
+        
+        layout.addLayout(btn_layout)
+        self.setLayout(layout)
+        
+        self.atualizar_valor()
+    
+    def atualizar_valor(self):
+        """Atualiza o valor a pagar considerando créditos"""
+        if self.usar_credito_check.isChecked():
+            saldo_creditos = self.pagamento_controller.buscar_saldo_creditos(
+                self.agendamento['cliente_id']
+            )
+            valor_servico = float(self.agendamento['servico_preco'])
+            valor_a_pagar = max(0, valor_servico - saldo_creditos)
+            
+            self.valor_pagar_label.setText(f"Valor a pagar: R$ {valor_a_pagar:.2f}")
+        else:
+            self.valor_pagar_label.setText(
+                f"Valor a pagar: R$ {self.agendamento['servico_preco']:.2f}"
+            )
+    
+    def processar_pagamento(self):
+        """Processa o pagamento do agendamento"""
+        tipo_pagamento = self.tipo_pagamento_combo.currentData()
+        usar_credito = self.usar_credito_check.isChecked()
+        
+        sucesso, mensagem = self.pagamento_controller.criar_pagamento_agendamento(
+            self.agendamento['id'],
+            tipo_pagamento,
+            usar_credito
+        )
+        
+        if sucesso:
+            QMessageBox.information(self, "Sucesso", mensagem)
+            self.accept()
+        else:
+            QMessageBox.warning(self, "Erro", mensagem)

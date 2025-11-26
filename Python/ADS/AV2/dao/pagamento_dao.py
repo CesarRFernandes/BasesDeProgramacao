@@ -22,12 +22,42 @@ class PagamentoDAO(BaseDAO):
         return self.create(data)
     
     def confirmar_pagamento(self, id: int) -> bool:
-        """Confirma um pagamento"""
+        """Confirma um pagamento e atualiza a transação correspondente"""
+        from dao.transacao_dao import TransacaoDAO
+        
+        # Atualizar pagamento
         data = {
             'status': 'pago',
             'data_pagamento': datetime.now()
         }
-        return self.update(id, data)
+        resultado = self.update(id, data)
+        
+        if resultado:
+            # Buscar informações do pagamento
+            pagamento = self.find_by_id(id)
+            
+            if pagamento:
+                # Atualizar transação correspondente
+                transacao_dao = TransacaoDAO()
+                
+                # Buscar transação por agendamento_id ou cliente + valor
+                query = """
+                    SELECT id FROM transacoes 
+                    WHERE cliente_id = %s 
+                    AND ABS(valor - %s) < 0.01
+                    AND status = 'pendente'
+                    ORDER BY data_hora DESC
+                    LIMIT 1
+                """
+                transacoes = transacao_dao.execute_query(
+                    query, 
+                    (pagamento['cliente_id'], pagamento['valor'])
+                )
+                
+                if transacoes:
+                    transacao_dao.atualizar_status(transacoes[0]['id'], 'confirmado')
+        
+        return resultado
     
     def buscar_por_agendamento(self, agendamento_id: int) -> List[dict]:
         """Busca pagamentos de um agendamento"""

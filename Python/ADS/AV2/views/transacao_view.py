@@ -17,6 +17,12 @@ class TransacaoView(QWidget):
         self.init_ui()
         self.carregar_transacoes()
     
+    def showEvent(self, event):
+        """Atualiza dados quando a aba é exibida"""
+        super().showEvent(event)
+        # Recarregar transações quando a aba for selecionada
+        self.carregar_transacoes()
+    
     def init_ui(self):
         layout = QVBoxLayout()
         self.setLayout(layout)

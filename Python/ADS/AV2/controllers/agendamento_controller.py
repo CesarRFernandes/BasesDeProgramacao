@@ -151,13 +151,40 @@ class AgendamentoController:
             return False, f"Erro: {str(e)}"
     
     def concluir_atendimento(self, agendamento_id: int) -> tuple[bool, str]:
-        """Marca agendamento como concluído"""
+        """Marca agendamento como concluído e cria pagamento pendente"""
         try:
-            if self.agendamento_dao.atualizar_status(agendamento_id, 'concluido'):
-                return True, "Atendimento concluído"
-            return False, "Erro ao concluir atendimento"
+            agendamento = self.agendamento_dao.buscar_detalhado(agendamento_id)
+            
+            if not agendamento:
+                return False, "Agendamento não encontrado"
+            
+            # Atualizar status do agendamento
+            if not self.agendamento_dao.atualizar_status(agendamento_id, 'concluido'):
+                return False, "Erro ao concluir atendimento"
+            
+            # Criar pagamento pendente se não usar pacote
+            if not agendamento.get('cliente_pacote_id'):
+                pagamento = Pagamento(
+                    agendamento_id=agendamento_id,
+                    cliente_id=agendamento['cliente_id'],
+                    valor=float(agendamento['servico_preco']),
+                    tipo_pagamento='dinheiro',
+                    status='pendente',
+                    descricao=f"Pagamento do serviço: {agendamento['servico_nome']}"
+                )
+                
+                pagamento_id = self.pagamento_dao.criar_pagamento(pagamento)
+                
+                if pagamento_id:
+                    return True, f"Atendimento concluído! Pagamento ID {pagamento_id} criado (PENDENTE)"
+            
+            return True, "Atendimento concluído"
         except Exception as e:
             return False, f"Erro: {str(e)}"
+    
+    def buscar_agendamento_detalhado(self, agendamento_id: int) -> Optional[dict]:
+        """Busca agendamento com todos os detalhes"""
+        return self.agendamento_dao.buscar_detalhado(agendamento_id)
     
     def buscar_agendamentos_data(self, data) -> List[dict]:
         """Busca agendamentos de uma data"""

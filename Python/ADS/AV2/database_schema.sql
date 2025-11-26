@@ -213,3 +213,166 @@ INSERT INTO pacotes_servicos (pacote_id, servico_id, quantidade) VALUES
 (1, 1, 1), (1, 6, 1),
 (2, 3, 1), (2, 8, 1),
 (3, 1, 1), (3, 2, 1), (3, 3, 1), (3, 6, 1);
+
+-- Tabela de Transações para Histórico Completo
+CREATE TABLE IF NOT EXISTS transacoes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cliente_id INT NOT NULL,
+    agendamento_id INT NULL,
+    pacote_id INT NULL,
+    tipo VARCHAR(50) NOT NULL,
+    metodo_pagamento VARCHAR(20),
+    valor DECIMAL(10, 2) NOT NULL,
+    data_hora DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(20) NOT NULL DEFAULT 'confirmado',
+    descricao TEXT,
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id),
+    FOREIGN KEY (agendamento_id) REFERENCES agendamentos(id),
+    FOREIGN KEY (pacote_id) REFERENCES pacotes(id),
+    INDEX idx_cliente (cliente_id),
+    INDEX idx_tipo (tipo),
+    INDEX idx_data (data_hora),
+    INDEX idx_status (status)
+) ENGINE=InnoDB;
+
+-- Tipos de transações possíveis:
+-- 'pagamento_servico', 'pagamento_pacote', 'credito_recebido', 
+-- 'credito_utilizado', 'taxa_nao_comparecimento', 'penalidade', 
+-- 'estorno', 'reembolso'
+
+-- Trigger para registrar transação ao criar pagamento
+DELIMITER $$
+
+CREATE TRIGGER after_pagamento_insert
+AFTER INSERT ON pagamentos
+FOR EACH ROW
+BEGIN
+    DECLARE tipo_transacao VARCHAR(50);
+    
+    IF NEW.agendamento_id IS NOT NULL THEN
+        SET tipo_transacao = 'pagamento_servico';
+    ELSEIF NEW.cliente_pacote_id IS NOT NULL THEN
+        SET tipo_transacao = 'pagamento_pacote';
+    ELSE
+        SET tipo_transacao = 'pagamento';
+    END IF;
+    
+    INSERT INTO transacoes (
+        cliente_id, 
+        agendamento_id, 
+        tipo, 
+        metodo_pagamento, 
+        valor, 
+        data_hora, 
+        status, 
+        descricao
+    ) VALUES (
+        NEW.cliente_id,
+        NEW.agendamento_id,
+        tipo_transacao,
+        NEW.tipo_pagamento,
+        NEW.valor,
+        NOW(),
+        NEW.status,
+        NEW.descricao
+    );
+END$$
+
+DELIMITER ;
+
+-- Trigger para registrar transação ao criar crédito
+DELIMITER $$
+
+CREATE TRIGGER after_credito_insert
+AFTER INSERT ON creditos
+FOR EACH ROW
+BEGIN
+    INSERT INTO transacoes (
+        cliente_id, 
+        tipo, 
+        valor, 
+        data_hora, 
+        status, 
+        descricao
+    ) VALUES (
+        NEW.cliente_id,
+        'credito_recebido',
+        NEW.valor,
+        NOW(),
+        'confirmado',
+        CONCAT('Crédito recebido - Penalidade ID: ', NEW.penalidade_id)
+    );
+END$$
+
+DELIMITER ;
+
+-- Trigger para registrar transação ao aplicar penalidade
+DELIMITER $$
+
+CREATE TRIGGER after_penalidade_insert
+AFTER INSERT ON penalidades
+FOR EACH ROW
+BEGIN
+    -- Registra a taxa
+    INSERT INTO transacoes (
+        cliente_id, 
+        agendamento_id,
+        tipo, 
+        valor, 
+        data_hora, 
+        status, 
+        descricao
+    ) VALUES (
+        NEW.cliente_id,
+        NEW.agendamento_id,
+        'taxa_nao_comparecimento',
+        NEW.valor_taxa,
+        NOW(),
+        'pendente',
+        CONCAT('Taxa de não comparecimento - 50%')
+    );
+    
+    -- Registra o crédito gerado
+    INSERT INTO transacoes (
+        cliente_id, 
+        agendamento_id,
+        tipo, 
+        valor, 
+        data_hora, 
+        status, 
+        descricao
+    ) VALUES (
+        NEW.cliente_id,
+        NEW.agendamento_id,
+        'credito_recebido',
+        NEW.valor_credito,
+        NOW(),
+        'confirmado',
+        CONCAT('Crédito gerado - Não comparecimento')
+    );
+END$$
+
+DELIMITER ;
+
+-- Inserir transações históricas dos pagamentos existentes
+INSERT INTO transacoes (cliente_id, agendamento_id, tipo, metodo_pagamento, valor, data_hora, status, descricao)
+SELECT 
+    p.cliente_id,
+    p.agendamento_id,
+    CASE 
+        WHEN p.agendamento_id IS NOT NULL THEN 'pagamento_servico'
+        WHEN p.cliente_pacote_id IS NOT NULL THEN 'pagamento_pacote'
+        ELSE 'pagamento'
+    END as tipo,
+    p.tipo_pagamento,
+    p.valor,
+    COALESCE(p.data_pagamento, p.data_criacao) as data_hora,
+    p.status,
+    p.descricao
+FROM pagamentos p
+WHERE NOT EXISTS (
+    SELECT 1 FROM transacoes t 
+    WHERE t.cliente_id = p.cliente_id 
+    AND t.agendamento_id = p.agendamento_id
+    AND t.valor = p.valor
+);
