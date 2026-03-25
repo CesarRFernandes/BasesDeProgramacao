@@ -19,6 +19,17 @@ INSERT INTO #tmp_pedidos VALUES
 ('abc741','2024-03-21','brinq789rio','jogo',1,43.22,5.32,123);
 
 
+--Inserindo do txt
+BULK INSERT #tmp_pedidos
+FROM 'c:\BasesDeProgramacao\SDB-SistemasDeBancoDeDados\pedidos.txt'
+WITH (
+    FIRSTROW = 2,
+    FIELDTERMINATOR = ':',
+    ROWTERMINATOR = '\n',
+    CODEPAGE = '65001'
+    );
+
+
 -- Caluclar total pedido
 SELECT
     codigoPedido,
