@@ -53,7 +53,7 @@ SELECT
     p.codigoPedido,
     MAX(p.codigoComprador),
     t.valor_total
-FROM #tmp-pedidos p
+FROM #tmp_pedidos p
 JOIN #Totais t ON t.codigoPedido = p.codigoPedido
 GROUP BY p.codigoPedido, t.valor_total;
 
@@ -65,7 +65,7 @@ SELECT
     SKU,
     qtd,
     valor
-FROM #tmp-pedidos;
+FROM #tmp_pedidos;
 
 
 -- Pedidos semdp inseridos na ordem da fila
