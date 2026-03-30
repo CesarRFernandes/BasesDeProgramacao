@@ -1,27 +1,26 @@
 -- Tabela temporária
 CREATE TABLE #tmp_pedidos (
     codigoPedido VARCHAR(20),
-    dataPedido DATE,
+    dataPedido VARCHAR (100),
     SKU VARCHAR(50),
+    UPC VARCHAR (100),
     nomeProduto VARCHAR(100),
-    qtd INT,
+    qtd VARCHAR (100),
     valor DECIMAL(10,2),
     frete DECIMAL(10,2),
-    codigoComprador INT
+    email VARCHAR (100),
+    codigoComprador VARCHAR (50),
+    nomeComprador VARCHAR (100),
+    endereco VARCHAR (100),
+    CEP VARCHAR (100),
+    UF VARCHAR (100),
+    pais VARCHAR (100)
 );
-
-
--- Inserindo dados
-INSERT INTO #tmp_pedidos VALUES
-('abc123','2024-03-19','brinq456rio','quebra-cabeca',1,43.22,5.32,123),
-('abc123','2024-03-19','brinq789rio','jogo',1,43.22,5.32,123),
-('abc789','2024-03-20','roupa123rio','camisa',2,47.25,6.21,789),
-('abc741','2024-03-21','brinq789rio','jogo',1,43.22,5.32,123);
 
 
 --Inserindo do txt
 BULK INSERT #tmp_pedidos
-FROM 'c:\BasesDeProgramacao\SDB-SistemasDeBancoDeDados\pedidos.txt'
+FROM 'C:\Users\Crf15\Downloads\pedidos.txt'
 WITH (
     FIRSTROW = 2,
     FIELDTERMINATOR = ':',
@@ -54,9 +53,10 @@ SELECT
     p.codigoPedido,
     MAX(p.codigoComprador),
     t.valor_total
-FROM #tmp_pedidos p
+FROM #tmp-pedidos p
 JOIN #Totais t ON t.codigoPedido = p.codigoPedido
 GROUP BY p.codigoPedido, t.valor_total;
+
 
 -- Atualizando tabela de compra com os pedidos
 INSERT INTO compra (codigoPedido, SKU, quantidade, valorUnitario)
@@ -65,7 +65,8 @@ SELECT
     SKU,
     qtd,
     valor
-FROM #tmp_pedidos;
+FROM #tmp-pedidos;
+
 
 -- Pedidos semdp inseridos na ordem da fila
 INSERT INTO expedicao (codigoPedido)
