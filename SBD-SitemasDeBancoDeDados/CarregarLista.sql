@@ -23,7 +23,6 @@ CREATE TABLE expedicao (
 
 -- LIMPEZA DAS TEMPORÁRIAS (CASO EXISTA)
 IF OBJECT_ID('tempdb..#tmp_pedidos') IS NOT NULL DROP TABLE #tmp_pedidos;
-IF OBJECT_ID('tempdb..#dados') IS NOT NULL DROP TABLE #dados;
 IF OBJECT_ID('tempdb..#Totais') IS NOT NULL DROP TABLE #Totais;
 IF OBJECT_ID('tempdb..#Fila') IS NOT NULL DROP TABLE #Fila;
 
@@ -32,13 +31,13 @@ IF OBJECT_ID('tempdb..#Fila') IS NOT NULL DROP TABLE #Fila;
 -- Tabela temporária
 CREATE TABLE #tmp_pedidos (
     codigoPedido VARCHAR(20),
-    dataPedido VARCHAR(20),
+    dataPedido DATE,
     SKU VARCHAR(50),
     UPC VARCHAR(50),
     nomeProduto VARCHAR(100),
-    qtd VARCHAR(20),
-    valor VARCHAR(20),
-    frete VARCHAR(20),
+    qtd INT,
+    valor VARCHAR(20),   
+    frete VARCHAR(20),   
     email VARCHAR(100),
     codigoComprador VARCHAR(50),
     nomeComprador VARCHAR(100),
@@ -66,33 +65,13 @@ WITH (
 SELECT COUNT(*) AS total_importado FROM #tmp_pedidos;
 
 
--- Tratamento de dados
-SELECT
-    codigoPedido,
-    CONVERT(DATE, dataPedido) AS dataPedido,
-    SKU,
-    UPC,
-    nomeProduto,
-    CAST(qtd AS INT) AS qtd,
-    CAST(REPLACE(valor, ',', '.') AS DECIMAL(10,2)) AS valor,
-    CAST(REPLACE(frete, ',', '.') AS DECIMAL(10,2)) AS frete,
-    email,
-    codigoComprador,
-    nomeComprador,
-    endereco,
-    CEP,
-    UF,
-    pais
-INTO #dados
-FROM #tmp_pedidos;
-
-
 -- Caluclar total pedido
 SELECT
     codigoPedido,
-    SUM(valor * qtd) + MAX(frete) AS valor_total
+    SUM(CAST(REPLACE(valor, ',', '.') AS DECIMAL(10,2)) * qtd)
+    + MAX(CAST(REPLACE(frete, ',', '.') AS DECIMAL(10,2))) AS valor_total
 INTO #Totais
-FROM #dados
+FROM #tmp_pedidos
 GROUP BY codigoPedido;
 
 
@@ -108,12 +87,12 @@ FROM #Totais;
 -- Atualizando tabela pedidos
 INSERT INTO pedidos (codigoPedido, codigoCliente, valorTotal)
 SELECT
-    d.codigoPedido,
-    MAX(d.codigoComprador),
+    p.codigoPedido,
+    MAX(p.codigoComprador),
     t.valor_total
-FROM #dados d
-JOIN #Totais t ON t.codigoPedido = d.codigoPedido
-GROUP BY d.codigoPedido, t.valor_total;
+FROM #tmp_pedidos p
+JOIN #Totais t ON t.codigoPedido = p.codigoPedido
+GROUP BY p.codigoPedido, t.valor_total;
 
 
 -- Atualizando tabela de compra com os pedidos
@@ -122,8 +101,8 @@ SELECT
     codigoPedido,
     SKU,
     qtd,
-    valor
-FROM #dados;
+    CAST(REPLACE(valor, ',', '.') AS DECIMAL(10,2))
+FROM #tmp_pedidos;
 
 
 -- Pedidos semdp inseridos na ordem da fila
@@ -134,7 +113,4 @@ ORDER BY ordem;
 
 
 -- Resultado
-SELECT * FROM pedidos;
-SELECT * FROM compra;
-SELECT * FROM expedicao;
 SELECT * FROM #Fila ORDER BY ordem;
