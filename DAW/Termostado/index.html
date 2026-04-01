@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Termostato</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <label for="temperatura">Temperatura (0-70):</label>
+      <input type="number" id="temperatura" min="0" max="70" value="30" />
+      <button id="atualizar">Atualizar</button>
+      <div id="retangulo"></div>
+      <p id="mensagem"></p>
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SeguroSaude - DAW</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Seguro Saúde</h1>
+
+    <label for="nome">Nome:</label>
+    <input type="text" name="nome" id="nome">
+    <br>
+	<br>
+    <label for="etaria">Faixa Etária:</label>
+    <select id="etaria">
+        <option value="1">20 anos ou menos</option>
+        <option value="2">21 a 30 anos</option>
+        <option value="3">31 a 40 anos</option>
+        <option value="4">41 a 50 anos</option>
+        <option value="5">51 a 65 anos</option>
+        <option value="6">66 anos ou mais</option>
+    </select>
+    <br>
+	<br>
+    <input type="checkbox" name="doenca" id="doenca">
+    <label for="doenca">Possui doença prévia?</label>
+    <br>
+	<br>
+    <input type="button" value="Calcular" onclick="calcular()">
+    <br>
+	<br>
+    <div id="resultado"></div>
+
+    <script>
+        function calcular() {
+            const nome = $('#nome').val();
+            const faixa = $('#faixa').val();
+            const doenca = $('#doenca').is(':checked');
+
+            $.ajax({
+                type: "POST",
+                url: "calcular.php",
+                data: {
+                    nome: nome,
+                    faixa: faixa,
+                    doenca: doenca
+                },
+                success: function (response) {
+                    $('#resultado').html(`<strong>${response.nome}</strong>, o valor do seu seguro é <strong>R$ ${response.valor}</strong>`);
+                },
+                error: function (xhr, status, error) {
+                    $('#resultado').html('Erro ao calcular o seguro.');
+                }
+            });
+        }
+    </script>
+
+</body>
+</html>

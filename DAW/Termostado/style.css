@@ -1,0 +1,23 @@
+body {
+  font-family: Arial, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
+
+.container {
+  text-align: center;
+}
+
+#retangulo {
+  width: 200px;
+  height: 100px;
+  background-color: lightyellow;
+  margin: 20px auto;
+}
+
+#mensagem {
+  color: red;
+}

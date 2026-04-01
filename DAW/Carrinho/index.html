@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Carrinho de Compras</title>
+  </head>
+  <body>
+    <table border="1" id="produtos"></table>
+
+    <p id="resumo"></p>
+
+    <script type="text/javascript">
+      function Produto(id, descricao, preco) {
+        this.id = id;
+        this.descricao = descricao;
+        this.preco = preco;
+        this.getDescricao = function () {
+          return this.descricao;
+        };
+        this.getPreco = function () {
+          return this.preco;
+        };
+        this.getId = function () {
+          return this.id;
+        };
+      }
+
+      function Item(produto, quantidade) {
+        this.produto = produto;
+        this.quantidade = quantidade;
+        this.calcularTotalItem = function () {
+          return this.produto.getPreco() * this.quantidade;
+        };
+      }
+
+      function Carrinho() {
+        this.itens = [];
+        this.adicionar = function (item) {
+          this.itens.push(item);
+          atualizarResumo();
+        };
+        this.getValorTotal = function () {
+          var total = 0.0;
+          for (var i = 0; i < this.itens.length; i++) {
+            var item = this.itens[i];
+            total += item.calcularTotalItem();
+          }
+          return total;
+        };
+      }
+
+      function criarProdutos() {
+        var produtos = [];
+        produtos.push(new Produto(1, "Bola", 50.12));
+        produtos.push(new Produto(2, "Chuteira", 200.0));
+        produtos.push(new Produto(3, "Meia", 16.6));
+        produtos.push(new Produto(4, "Caneleira", 50.0));
+        return produtos;
+      }
+
+      var produtos = criarProdutos();
+      var carrinho = new Carrinho();
+      atualizarResumo(); // Inicializa o resumo
+
+      function adicionarAoCesto(idProduto) {
+        var regexpId = /produto(\d)+/;
+        var tokens = regexpId.exec(idProduto);
+        var id = parseInt(tokens[1]);
+
+        for (var i = 0; i < produtos.length; i++) {
+          var produto = produtos[i];
+          if (produto.getId() === id) {
+            var quantidade = adicionarQuantidadeItem();
+            if (quantidade > 0) {
+              carrinho.adicionar(new Item(produto, quantidade));
+            }
+            return;
+          }
+        }
+        alert("produto nao identificado");
+      }
+
+      function desenharProdutos(produtos) {
+        var tabela = document.querySelector("#produtos");
+        for (var i = 0; i < produtos.length; i++) {
+          var produto = produtos[i];
+          var linha = document.createElement("tr");
+
+          var celulaDescricao = document.createElement("td");
+          var textoDescricao = document.createTextNode(produto.descricao);
+          celulaDescricao.appendChild(textoDescricao);
+          linha.appendChild(celulaDescricao);
+
+          var celulaPreco = document.createElement("td");
+          var textoPreco = document.createTextNode(produto.preco.toFixed(2));
+          celulaPreco.appendChild(textoPreco);
+          linha.appendChild(celulaPreco);
+
+          var celulaAdicionar = document.createElement("td");
+          var botao = document.createElement("button");
+          var textoBotao = document.createTextNode("Adicionar");
+          botao.setAttribute("id", "produto" + produto.getId());
+          botao.appendChild(textoBotao);
+          botao.onclick = function () {
+            adicionarAoCesto(this.id);
+          };
+          celulaAdicionar.appendChild(botao);
+          linha.appendChild(celulaAdicionar);
+
+          tabela.appendChild(linha);
+        }
+      }
+
+      desenharProdutos(produtos);
+
+      function adicionarQuantidadeItem() {
+        let quantidade;
+        do {
+          quantidade = prompt("Digite a quantidade: ");
+          if (quantidade === null) {
+            // Usuário cancelou
+            return 0;
+          }
+          quantidade = parseInt(quantidade);
+        } while (isNaN(quantidade) || quantidade <= 0);
+        return quantidade;
+      }
+
+      function atualizarResumo() {
+        var resumo = document.querySelector("#resumo");
+        var texto = "Itens na cesta:<br>";
+        for (var i = 0; i < carrinho.itens.length; i++) {
+          var item = carrinho.itens[i];
+          texto += `${item.produto.getDescricao()} - Quantidade: ${
+            item.quantidade
+          }<br>`;
+        }
+        texto += `<br>Valor total: R$ ${carrinho.getValorTotal().toFixed(2)}`;
+        resumo.innerHTML = texto;
+      }
+    </script>
+  </body>
+</html>

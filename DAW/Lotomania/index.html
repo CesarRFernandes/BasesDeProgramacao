@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Gerador de Números Aleatórios</title>
+    <style>
+        body {
+            font-family: Verdana, sans-serif;
+            padding: 30px;
+            background-color: #f9f9f9;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            font-weight: bold;
+        }
+        input[type="number"] {
+            padding: 5px;
+            width: 100px;
+        }
+        button {
+            padding: 10px 15px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        #resultado {
+            margin-top: 25px;
+            font-size: 18px;
+            color: #2a2a2a;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gerador Aleatório</h1>
+
+    <div class="form-group">
+        <label for="limite">Informe o valor limite:</label>
+        <input type="number" id="limite" min="1" value="60">
+    </div>
+
+    <div class="form-group">
+        <label for="quantidade">Quantidade a ser gerada:</label>
+        <input type="number" id="quantidade" min="1" value="6">
+    </div>
+
+    <button id="botaoGerar">Gerar Números</button>
+
+    <div id="resultado"></div>
+
+    <script>
+        document.getElementById('botaoGerar').addEventListener('click', function () {
+            const limite = document.querySelector('#limite').value;
+            const quantidade = document.querySelector('#quantidade').value;
+
+            fetch(`sorteio.php?limite=${limite}&quantidade=${quantidade}`)
+                .then(response => response.json())
+                .then(data => {
+                    const numeros = data.numeros.join(', ');
+                    document.getElementById('resultado').textContent = `Números sorteados: ${numeros}`;
+                })
+                .catch(error => {
+                    document.getElementById('resultado').textContent = 'Erro ao gerar números.';
+                    console.error('Erro:', error);
+                });
+        });
+    </script>
+</body>
+</html>

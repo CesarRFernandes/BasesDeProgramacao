@@ -1,0 +1,54 @@
+<html>
+<head>
+	<meta charset="utf-8" />
+	<title>Minha Lista de Tarefas</title>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+</head>
+<body>
+	<h1>Minhas Tarefas</h1>
+	
+	<div id="tarefas">
+		<div><input type="checkbox"/><span>Fazer tarefa de LPW</span></div>
+	</div>
+
+	<div id="acoes">
+		<p>
+			<input type="text" id="nova_tarefa" />
+			<button id="incluir_tarefa">Incluir</button>
+		</p>
+		<p>
+			<button id="excluir_tarefas">Excluir Tarefas</button>
+		</p>
+	</div>
+
+	<script>
+		<!-- codifique apenas aqui -->
+
+        var texto = document.querySelector("#nova_tarefa");
+
+        $("#incluir_tarefa").click(function(){
+            var novaTarefa = $("<div>");
+            
+            var checkbox = $("<input>").attr("type", "checkbox");
+            var tarefaTexto = $("<span>").text(texto.value);
+            
+            novaTarefa.append(checkbox, tarefaTexto);
+            
+            $("#tarefas").append(novaTarefa);
+            
+            texto.value = ""; 
+        });
+
+        $("#excluir_tarefas").click(function(){
+            $("#tarefas div").each(function(){
+                var checkbox = $(this).find("input[type='checkbox']");
+                
+                if (checkbox.prop("checked")) {
+                    $(this).remove();
+                }
+            });
+        });
+
+	</script>
+</body>
+</html>
