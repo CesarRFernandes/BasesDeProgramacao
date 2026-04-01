@@ -10,6 +10,7 @@ IF OBJECT_ID('compra') IS NULL
 CREATE TABLE compra (
     codigoPedido VARCHAR(20),
     SKU VARCHAR(50),
+    nomeProduto VARCHAR(100),
     quantidade INT,
     valorUnitario DECIMAL(10,2)
 );
@@ -20,6 +21,10 @@ CREATE TABLE expedicao (
 );
 
 
+--Evita duplicação
+TRUNCATE TABLE expedicao;
+TRUNCATE TABLE compra;
+TRUNCATE TABLE pedidos;
 
 -- LIMPEZA DAS TEMPORÁRIAS (CASO EXISTA)
 IF OBJECT_ID('tempdb..#tmp_pedidos') IS NOT NULL DROP TABLE #tmp_pedidos;
@@ -96,10 +101,11 @@ GROUP BY p.codigoPedido, t.valor_total;
 
 
 -- Atualizando tabela de compra com os pedidos
-INSERT INTO compra (codigoPedido, SKU, quantidade, valorUnitario)
+INSERT INTO compra (codigoPedido, SKU, nomeProduto, quantidade, valorUnitario)
 SELECT
     codigoPedido,
     SKU,
+    nomeProduto,
     qtd,
     CAST(REPLACE(valor, ',', '.') AS DECIMAL(10,2))
 FROM #tmp_pedidos;
@@ -113,4 +119,7 @@ ORDER BY ordem;
 
 
 -- Resultado
+SELECT * FROM pedidos;
+SELECT * FROM compra;
+SELECT * FROM expedicao;
 SELECT * FROM #Fila ORDER BY ordem;
