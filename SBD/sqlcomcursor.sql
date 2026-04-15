@@ -110,14 +110,16 @@ SELECT
 FROM #tmp_pedidos;
 
 
--- ESTOQUE (EXEMPLO)
+-- ESTOQUE (INICIAL)
 INSERT INTO estoque (SKU, quantidadeDisponivel)
 SELECT SKU, SUM(qtd) * 2
 FROM #tmp_pedidos
 GROUP BY SKU;
 
 
--- REGRA DE NEGÓCIO NA EXPEDIÇÃO (CURSOR)
+-- =========================
+-- CURSOR (REGRA DE NEGÓCIO)
+-- =========================
 DECLARE @codigoPedido VARCHAR(20);
 
 DECLARE cursor_pedidos CURSOR FOR
@@ -130,7 +132,7 @@ FETCH NEXT FROM cursor_pedidos INTO @codigoPedido;
 
 WHILE @@FETCH_STATUS = 0
 BEGIN
-    -- Só insere na expedição se TODOS os itens tiverem estoque
+    -- Verifica se há estoque suficiente para TODOS os itens
     IF NOT EXISTS (
         SELECT 1
         FROM compra c
@@ -139,11 +141,11 @@ BEGIN
         AND c.quantidade > e.quantidadeDisponivel
     )
     BEGIN
-        -- Inserção = aplicação da regra
+        -- Aprova pedido para expedição
         INSERT INTO expedicao (codigoPedido)
         VALUES (@codigoPedido);
 
-        -- Baixa de estoque APÓS aprovação
+        -- Baixa no estoque
         UPDATE e
         SET e.quantidadeDisponivel = e.quantidadeDisponivel - c.quantidade
         FROM estoque e
@@ -157,8 +159,18 @@ END
 CLOSE cursor_pedidos;
 DEALLOCATE cursor_pedidos;
 
-
--- RESULTADO
+-- Pedidos aprovados
 SELECT * FROM expedicao;
-SELECT * FROM estoque;
+
+-- Estoque final com nome do produto
+SELECT 
+    e.SKU,
+    MAX(c.nomeProduto) AS nomeProduto,
+    e.quantidadeDisponivel
+FROM estoque e
+LEFT JOIN compra c ON c.SKU = e.SKU
+GROUP BY e.SKU, e.quantidadeDisponivel
+ORDER BY nomeProduto;
+
+-- Fila de prioridade
 SELECT * FROM #Fila ORDER BY ordem;
