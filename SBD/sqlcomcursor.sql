@@ -1,6 +1,4 @@
---------------------------------------------------
 -- CRIAÇÃO DAS TABELAS
---------------------------------------------------
 IF OBJECT_ID('pedidos') IS NULL
 CREATE TABLE pedidos (
     codigoPedido VARCHAR(20),
@@ -28,9 +26,8 @@ CREATE TABLE estoque (
     quantidadeDisponivel INT
 );
 
---------------------------------------------------
+
 -- LIMPEZA
---------------------------------------------------
 TRUNCATE TABLE expedicao;
 TRUNCATE TABLE compra;
 TRUNCATE TABLE pedidos;
@@ -40,9 +37,8 @@ IF OBJECT_ID('tempdb..#tmp_pedidos') IS NOT NULL DROP TABLE #tmp_pedidos;
 IF OBJECT_ID('tempdb..#Totais') IS NOT NULL DROP TABLE #Totais;
 IF OBJECT_ID('tempdb..#Fila') IS NOT NULL DROP TABLE #Fila;
 
---------------------------------------------------
+
 -- TABELA TEMP
---------------------------------------------------
 CREATE TABLE #tmp_pedidos (
     codigoPedido VARCHAR(20),
     dataPedido DATE,
@@ -61,9 +57,8 @@ CREATE TABLE #tmp_pedidos (
     pais VARCHAR(50)
 );
 
---------------------------------------------------
+
 -- IMPORTAÇÃO
---------------------------------------------------
 BULK INSERT #tmp_pedidos
 FROM 'C:\temp\pedidos.txt'
 WITH (
@@ -73,9 +68,8 @@ WITH (
     CODEPAGE = '65001'
 );
 
---------------------------------------------------
+
 -- TOTAL DOS PEDIDOS
---------------------------------------------------
 SELECT
     codigoPedido,
     SUM(CAST(REPLACE(valor, ',', '.') AS DECIMAL(10,2)) * qtd)
@@ -84,9 +78,8 @@ INTO #Totais
 FROM #tmp_pedidos
 GROUP BY codigoPedido;
 
---------------------------------------------------
--- FILA (PRIORIDADE)
---------------------------------------------------
+
+-- FILA DE PRIORIDADE
 SELECT
     codigoPedido,
     valor_total,
@@ -94,9 +87,8 @@ SELECT
 INTO #Fila
 FROM #Totais;
 
---------------------------------------------------
+
 -- PEDIDOS
---------------------------------------------------
 INSERT INTO pedidos (codigoPedido, codigoCliente, valorTotal)
 SELECT
     p.codigoPedido,
@@ -106,9 +98,8 @@ FROM #tmp_pedidos p
 JOIN #Totais t ON t.codigoPedido = p.codigoPedido
 GROUP BY p.codigoPedido, t.valor_total;
 
---------------------------------------------------
+
 -- ITENS
---------------------------------------------------
 INSERT INTO compra (codigoPedido, SKU, nomeProduto, quantidade, valorUnitario)
 SELECT
     codigoPedido,
@@ -118,17 +109,15 @@ SELECT
     CAST(REPLACE(valor, ',', '.') AS DECIMAL(10,2))
 FROM #tmp_pedidos;
 
---------------------------------------------------
+
 -- ESTOQUE (EXEMPLO)
---------------------------------------------------
 INSERT INTO estoque (SKU, quantidadeDisponivel)
 SELECT SKU, SUM(qtd) * 2
 FROM #tmp_pedidos
 GROUP BY SKU;
 
---------------------------------------------------
+
 -- REGRA DE NEGÓCIO NA EXPEDIÇÃO (CURSOR)
---------------------------------------------------
 DECLARE @codigoPedido VARCHAR(20);
 
 DECLARE cursor_pedidos CURSOR FOR
@@ -168,9 +157,8 @@ END
 CLOSE cursor_pedidos;
 DEALLOCATE cursor_pedidos;
 
---------------------------------------------------
+
 -- RESULTADO
---------------------------------------------------
 SELECT * FROM expedicao;
 SELECT * FROM estoque;
 SELECT * FROM #Fila ORDER BY ordem;
